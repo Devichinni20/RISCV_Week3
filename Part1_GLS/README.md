@@ -1,6 +1,6 @@
 
 
-# VSD Hardware Design Program: VSDBabySoC Post-Synthesis Simulation
+#  VSDBabySoC Post-Synthesis Simulation
 
   
 
@@ -328,3 +328,4 @@ By observing **matching pre- and post-synthesis waveforms**, you have proven tha
 
 
 ```
+
