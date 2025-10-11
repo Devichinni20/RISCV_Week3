@@ -1,15 +1,16 @@
 # 📘 Table of Contents
 
-1. **Introduction**
-2. **Timing Paths** – start/end points, types (in→reg, reg→reg, etc.)
-3. **Setup & Hold Checks** – setup, hold, slack
-4. **Types of Analysis** – reg2reg, in2reg, reg2out, in2out, clock gating, recovery/removal, latch
-5. **Additional Analysis** – slew/transition, load, clock (skew, pulse width)
-6. **Reg2Reg Setup Timing** – single clock, skew, GBA/PBA, pin-node, setup condition
-7. **Flip-Flop Timing** – launch/capture, clk→Q, setup/hold, jitter, uncertainty, eye diagram
-8. **Hold Timing Concepts** – hold condition, slack, OCV, clock push/pull, CPPR
-9. **Summary** – setup vs hold, OCV, jitter, real-chip timing
+# 📌 Timing Analysis 
 
+1. [Introduction](#introduction)  
+2. [Timing Paths](#timing-paths) – start/end points, types (in→reg, reg→reg, etc.)  
+3. [Setup & Hold Checks](#setup--hold-checks) – setup, hold, slack  
+4. [Types of Analysis](#types-of-analysis) – reg2reg, in2reg, reg2out, in2out, clock gating, recovery/removal, latch  
+5. [Additional Analysis](#additional-analysis) – slew/transition, load, clock (skew, pulse width)  
+6. [Reg2Reg Setup Timing](#reg2reg-setup-timing) – single clock, skew, GBA/PBA, pin-node, setup condition  
+7. [Flip-Flop Timing](#flip-flop-timing) – launch/capture, clk→Q, setup/hold, jitter, uncertainty, eye diagram  
+8. [Hold Timing Concepts](#hold-timing-concepts) – hold condition, slack, OCV, clock push/pull, CPPR  
+9. [Summary](#summary) – setup vs hold, OCV, jitter, real-chip timing
 
 ## Introduction
 
@@ -29,13 +30,13 @@ This is in contrast to simulation based timing analysis where a stimulus is appl
 
 In a CMOS digital design flow, the static timing analysis can be performed at many different stages of the implementation. Figure below shows a typical flow.
 
-![Alt Text](Images/flow.png)
+
 
 **OpenSTA** is an open source static timing analyzer (STA) tool used in digital design. It is utilized to analyze and verify the timing performance of digital circuits at the gate level.
 
 OpenSTA uses a TCL command interpreter to read the design, specify timing constraints and print timing reports.
+<img width="623" height="582" alt="image" src="https://github.com/user-attachments/assets/42497ef1-2929-48c5-bd23-555acc49a31f" />
 
-![Alt Text](Images/opensta.png)
 
 #### Input Files
 
@@ -107,7 +108,7 @@ Path 3: Register to Output (reg2out)
 
 Path 4: Input to Output (in2out)
 
-![Alt Text](Images/paths.png)
+
 
 #### Setup and Hold Checks
 
@@ -235,6 +236,7 @@ Tclk ≥ Tcq + Tcomb + Tsetup + Tskew
 
 
 
+<img width="1920" height="1080" alt="Screenshot (135)" src="https://github.com/user-attachments/assets/3a141deb-6ad5-40c4-99c2-1d67784ca996" />
 
 **Where:**
 - `Tclk` → Clock period  
@@ -313,6 +315,7 @@ Inside a flip-flop, there are two **latches**:
 The setup condition ensures that data arrives before the capture clock edge:
 
 Tclk ≥ Tcq + Tcomb + Tsetup + Tskew + Tuncertainty
+<img width="1920" height="1080" alt="Screenshot (142)" src="https://github.com/user-attachments/assets/9fdf967a-a68c-46c8-9ea0-e536750ecefb" />
 
 
 If setup time increases → available **timing margin** decreases, reducing maximum operating frequency.
@@ -323,6 +326,8 @@ If setup time increases → available **timing margin** decreases, reducing maxi
 - **Jitter:** Variation in clock edge timing from its ideal position.  
 - **Uncertainty:** Accounts for combined effects of jitter, skew, and variations.  
 - **Impact:** Increases setup time requirement and reduces effective clock period.
+<img width="1920" height="1080" alt="Screenshot (143)" src="https://github.com/user-attachments/assets/5c23b97b-fdd0-4345-9800-6b7b3a9fbe4d" />
+<img width="1920" height="1080" alt="Screenshot (149)" src="https://github.com/user-attachments/assets/27869d0b-099a-492e-903f-378068e3c54d" />
 
 ---
 
@@ -339,6 +344,7 @@ If setup time increases → available **timing margin** decreases, reducing maxi
   Overlay of multiple bit periods showing signal integrity and timing margins.  
   - Eye opening → indicates good timing and low noise.  
   - Eye closure → indicates jitter, noise, or skew issues.
+<img width="1920" height="1080" alt="Screenshot (146)" src="https://github.com/user-attachments/assets/fbd8c7cc-0549-414d-88e7-8eae50e29437" />
 
 - **Timing Window:**  
   Defines valid region for data sampling based on setup/hold and jitter limits.
@@ -369,6 +375,7 @@ Hold analysis checks **minimum delay paths** to ensure data does **not change to
 
 - **Hold Condition:**
 Tcq + Tcomb ≥ Thold + Tskew + Tuncertainty
+<img width="1920" height="1080" alt="Screenshot (148)" src="https://github.com/user-attachments/assets/4bd1413c-0b86-4a31-bd02-3b0b324a31bb" />
 
 If violated → **Hold violation** (data captured incorrectly).
 
@@ -381,6 +388,7 @@ Slack indicates whether a path meets timing requirements.
 Slack = (Tclk - (Tcq + Tcomb + Tsetup + Tskew + Tuncertainty))
 - **For Hold:**
 Slack = (Tcq + Tcomb - (Thold + Tskew + Tuncertainty))
+<img width="1920" height="1080" alt="Screenshot (149)" src="https://github.com/user-attachments/assets/c1ac4f54-f2cb-412a-ad7f-c10072ae3908" />
 
 If `Slack ≥ 0` → timing met.  
 If `Slack < 0` → violation.
@@ -442,6 +450,7 @@ Removes shared path delay between launch and capture clocks to reduce pessimism 
 Setup analysis ensures data arrives **before** capture edge;  
 Hold analysis ensures data **stays stable after** capture edge.  
 OCV, jitter, and clock path adjustments refine these checks for **real silicon behavior**.
+
 
 
 
