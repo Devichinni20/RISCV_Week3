@@ -17,7 +17,7 @@
 - [VSDBabySoC basic timing analysis](#vsdbabysoc-basic-timing-analysis)
 - [VSDBabySoC PVT Corner Analysis (Post-Synthesis Timing)](#vsdbabysoc-pvt-corner-analysis-post-synthesis-timing)
 - [Timing Summary Across PVT Corners (Post-Synthesis STA Results)](#timing-summary-across-pvt-corners-post-synthesis-sta-results)
-- [Timing Plots Across PVT Corners](#timing-plots-across-pvt-corners)
+- [Timing Plots Across PVT Corners](#timing-plots-across-pvt-corners)(GRAPH PENDING)
 
 ## Installation of OpenSTA
 
@@ -195,9 +195,219 @@ _So a file located at `$HOME/VLSI/VSDBabySoC/OpenSTA/examples/min_max_delays.tcl
 This absolute path ensures that OpenSTA can locate and execute the script correctly within the container's file system.
 
 This method ensures repeatability and makes it easy to maintain reusable timing analysis setups for your designs.
+### VSDBabySoC basic timing analysis
+
+#### Prepare Required Files
+
+To begin static timing analysis on the VSDBabySoC design, you must organize and prepare the required files in specific directories.
+
+```bash
+# Create a directory to store Liberty timing libraries
+devichinni20@devi-VirtualBox:~/VLSI/VSDBabySoC/OpenSTA$ mkdir -p examples/timing_libs/
+devichinni20@devi-VirtualBox:~/VLSI/VSDBabySoC/OpenSTA/examples$ ls timing_libs/
+avsddac.lib  avsdpll.lib  sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Create a directory to store synthesized netlist and constraint files
+devichinni20@devi-VirtualBox:~/VLSI/VSDBabySoC/OpenSTA$ mkdir -p examples/BabySoC
+devichinni20@devi-VirtualBox:~/VLSI/VSDBabySoC/OpenSTA/examples$ ls BabySoC/
+gcd_sky130hd.sdc vsdbabysoc_synthesis.sdc  vsdbabysoc.synth.v
+```
+These files include:
+
+- Standard cell library: sky130_fd_sc_hd__tt_025C_1v80.lib
+
+- IP-specific Liberty libraries: avsdpll.lib, avsddac.lib
+
+- Synthesized gate-level netlist: vsdbabysoc.synth.v
+
+- Timing constraints: vsdbabysoc_synthesis.sdc
+
+Below is the TCL script to run complete min/max timing checks on the SoC:
+
+<details>
+<summary><strong>vsdbabysoc_min_max_delays.tcl</strong></summary>
+  
+  
+```shell
+# Load Liberty Libraries (standard cell + IPs)
+read_liberty -min /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_liberty -max /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_liberty -min /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsdpll.lib
+read_liberty -max /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsdpll.lib
+
+read_liberty -min /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsddac.lib
+read_liberty -max /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsddac.lib
+
+# Read Synthesized Netlist
+read_verilog /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/vsdbabysoc.synth.v
+
+# Link the Top-Level Design
+link_design vsdbabysoc
+
+# Apply SDC Constraints
+read_sdc /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/vsdbabysoc_synthesis.sdc
+
+# Generate Timing Report
+report_checks
+```
+
+</details>
+
+| **Line of Code**                                       | **Purpose**                | **Explanation**                                                                                    |
+| ------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `read_liberty -min ...sky130...` & `-max ...sky130...` | Load standard cell library | Loads the **typical PVT corner** for both min (hold) and max (setup) timing analysis.              |
+| `read_liberty -min/-max avsdpll.lib`                   | Load PLL IP Liberty        | Includes Liberty timing views of the **PLL IP** used in the design.                                |
+| `read_liberty -min/-max avsddac.lib`                   | Load DAC IP Liberty        | Includes Liberty timing views of the **DAC IP** used in the design.                                |
+| `read_verilog vsdbabysoc.synth.v`                      | Load synthesized netlist   | Loads the gate-level Verilog netlist of the **VSDBabySoC** design.                                 |
+| `link_design vsdbabysoc`                               | Link top-level module      | Links the hierarchy using `vsdbabysoc` as the **top module** for timing analysis.                  |
+| `read_sdc vsdbabysoc_synthesis.sdc`                    | Load constraints           | Loads SDC file specifying **clock definitions, input/output delays, and false paths**.             |
+| `report_checks`                                        | Run timing analysis        | Generates a default **setup timing report**. Add `-path_delay min_max` to see both hold and setup. |
+
+execute it inside the Docker container:
+
+```shell
+docker run -it -v $HOME:/data opensta /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/vsdbabysoc_min_max_delays.tcl
+```
+⚠️ **Possible Error Alert**
+
+You may encounter the following error when running the script:
+
+```shell
+Warning: /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/sky130_fd_sc_hd__tt_025C_1v80.lib line 23, default_fanout_load is 0.0.
+Warning: /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/sky130_fd_sc_hd__tt_025C_1v80.lib line 1, library sky130_fd_sc_hd__tt_025C_1v80 already exists.
+Warning: /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/sky130_fd_sc_hd__tt_025C_1v80.lib line 23, default_fanout_load is 0.0.
+Error: /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsdpll.lib line 54, syntax error
+```
+<img width="1920" height="923" alt="VirtualBox_opensource_tool_ubuntu_11_10_2025_23_49_18" src="https://github.com/user-attachments/assets/e368d79f-19da-4247-9847-783f8efff52d" />
 
 
+✅ **Fix:**
+
+This error occurs because Liberty syntax does not support // for single-line comments, and more importantly, the { character appearing after // confuses the Liberty parser. Specifically, check around _line 54 of avsdpll.lib_ and correct any syntax issues such as:
+
+```shell
+//pin (GND#2) {
+//  direction : input;
+//  max_transition : 2.5;
+//  capacitance : 0.001;
+//}
+```
+✔️ **Replace with:**
+```shell
+/*
+pin (GND#2) {
+  direction : input;
+  max_transition : 2.5;
+  capacitance : 0.001;
+}
+*/
+```
+This should allow OpenSTA to parse the Liberty file without throwing syntax errors.
+
+After fixing the Liberty file comment syntax as shown above, you can rerun the script to perform complete timing analysis for VSDBabySoC:
+
+### VSDBabySoC PVT Corner Analysis (Post-Synthesis Timing)
+Static Timing Analysis (STA) is performed across various **PVT (Process-Voltage-Temperature)** corners to ensure the design meets timing requirements under different conditions.
+
+### Critical Timing Corners
+
+**Worst Max Path (Setup-critical) Corners:**
+- `ss_LowTemp_LowVolt`
+- `ss_HighTemp_LowVolt`  
+_These represent the **slowest** operating conditions._
+
+**Worst Min Path (Hold-critical) Corners:**
+- `ff_LowTemp_HighVolt`
+- `ff_HighTemp_HighVolt`  
+_These represent the **fastest** operating conditions._
+
+ **Timing libraries** required for this analysis can be downloaded from:  
+🔗 [Skywater PDK - sky130_fd_sc_hd Timing Libraries](https://github.com/efabless/skywater-pdk-libs-sky130_fd_sc_hd/tree/master/timing)
+
+Below is the script that can be used to perform STA across the PVT corners for which the Sky130 Liberty files are available.
+
+<details>
+<summary><strong>sta_across_pvt.tcl</strong></summary>
+
+```shell
+ set list_of_lib_files(1) "sky130_fd_sc_hd__tt_025C_1v80.lib"
+ set list_of_lib_files(2) "sky130_fd_sc_hd__ff_100C_1v65.lib"
+ set list_of_lib_files(3) "sky130_fd_sc_hd__ff_100C_1v95.lib"
+ set list_of_lib_files(4) "sky130_fd_sc_hd__ff_n40C_1v56.lib"
+ set list_of_lib_files(5) "sky130_fd_sc_hd__ff_n40C_1v65.lib"
+ set list_of_lib_files(6) "sky130_fd_sc_hd__ff_n40C_1v76.lib"
+ set list_of_lib_files(7) "sky130_fd_sc_hd__ss_100C_1v40.lib"
+ set list_of_lib_files(8) "sky130_fd_sc_hd__ss_100C_1v60.lib"
+ set list_of_lib_files(9) "sky130_fd_sc_hd__ss_n40C_1v28.lib"
+ set list_of_lib_files(10) "sky130_fd_sc_hd__ss_n40C_1v35.lib"
+ set list_of_lib_files(11) "sky130_fd_sc_hd__ss_n40C_1v40.lib"
+ set list_of_lib_files(12) "sky130_fd_sc_hd__ss_n40C_1v44.lib"
+ set list_of_lib_files(13) "sky130_fd_sc_hd__ss_n40C_1v76.lib"
+
+ read_liberty /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsdpll.lib
+ read_liberty /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/avsddac.lib
+
+ for {set i 1} {$i <= [array size list_of_lib_files]} {incr i} {
+ read_liberty /data/VLSI/VSDBabySoC/OpenSTA/examples/timing_libs/$list_of_lib_files($i)
+ read_verilog /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/vsdbabysoc.synth.v
+ link_design vsdbabysoc
+ current_design
+ read_sdc /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/vsdbabysoc_synthesis.sdc
+ check_setup -verbose
+ report_checks -path_delay min_max -fields {nets cap slew input_pins fanout} -digits {4} > /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/min_max_$list_of_lib_files($i).txt
+
+ exec echo "$list_of_lib_files($i)" >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_worst_max_slack.txt
+ report_worst_slack -max -digits {4} >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_worst_max_slack.txt
+
+ exec echo "$list_of_lib_files($i)" >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_worst_min_slack.txt
+ report_worst_slack -min -digits {4} >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_worst_min_slack.txt
+
+ exec echo "$list_of_lib_files($i)" >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_tns.txt
+ report_tns -digits {4} >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_tns.txt
+
+ exec echo "$list_of_lib_files($i)" >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_wns.txt
+ report_wns -digits {4} >> /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT/sta_wns.txt
+ }
+```
+
+</details>
+
+| **Command**               | **Purpose**                       | **Explanation**                                                                                                              |
+| ------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `report_worst_slack -max` | Report Worst Setup Slack          | Outputs the **most negative setup slack** (WNS) in the design for the current PVT corner.                                    |
+| `report_worst_slack -min` | Report Worst Hold Slack           | Outputs the **most negative hold slack** in the design for the current PVT corner.                                           |
+| `report_tns`              | Report Total Negative Slack (TNS) | Prints the **sum of all negative slacks** (across all violating paths). Reflects how widespread timing violations are.       |
+| `report_wns`              | Report Worst Negative Slack (WNS) | Prints the **single worst slack** (i.e., the most timing-violating path). Indicates severity of the critical path violation. |
+
+execute it inside the Docker container:
+
+```shell
+docker run -it -v $HOME:/data opensta /data/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/sta_across_pvt.tcl
+```
+
+After executing the above script, you can find the generated timing reports in the STA_OUTPUT directory:
+```shell
+devichinni20@devi:Virtual Box:~/VLSI/VSDBabySoC/OpenSTA/examples/BabySoC/STA_OUTPUT$ ls
+min_max_sky130_fd_sc_hd__ff_100C_1v65.lib.txt  min_max_sky130_fd_sc_hd__ss_100C_1v40.lib.txt  min_max_sky130_fd_sc_hd__ss_n40C_1v44.lib.txt  sta_worst_max_slack.txt
+min_max_sky130_fd_sc_hd__ff_100C_1v95.lib.txt  min_max_sky130_fd_sc_hd__ss_100C_1v60.lib.txt  min_max_sky130_fd_sc_hd__ss_n40C_1v76.lib.txt  sta_worst_min_slack.txt
+min_max_sky130_fd_sc_hd__ff_n40C_1v56.lib.txt  min_max_sky130_fd_sc_hd__ss_n40C_1v28.lib.txt  min_max_sky130_fd_sc_hd__tt_025C_1v80.lib.txt
+min_max_sky130_fd_sc_hd__ff_n40C_1v65.lib.txt  min_max_sky130_fd_sc_hd__ss_n40C_1v35.lib.txt  sta_tns.txt
+min_max_sky130_fd_sc_hd__ff_n40C_1v76.lib.txt  min_max_sky130_fd_sc_hd__ss_n40C_1v40.lib.txt  sta_wns.txt
+```
+
+| **File**                  | **Description**                                                     |
+| ------------------------- | ------------------------------------------------------------------- |
+| `min_max_<lib>.txt`       | Detailed timing report for setup and hold paths for each PVT corner |
+| `sta_worst_max_slack.txt` | Worst setup slack values across all corners                         |
+| `sta_worst_min_slack.txt` | Worst hold slack values across all corners                          |
+| `sta_tns.txt`             | Total negative slack values across all corners                      |
+| `sta_wns.txt`             | Worst negative slack values across all corners                      |
 
 
+#### Timing Summary Across PVT Corners (Post-Synthesis STA Results)
+The following timing summary table was collected by running STA across 13 PVT corners using OpenSTA. 
+
+Metrics such as Worst Hold Slack, Worst Setup Slack, WNS, and TNS were extracted from the output reports.
 
 
